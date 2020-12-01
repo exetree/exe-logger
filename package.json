@@ -10,7 +10,7 @@
   },
   "author": "Marius Petrauskas <marius@exetree.eu>",
   "types": "lib/index.d.ts",
-  "license": "",
+  "license": "ISC",
   "files": [
     "lib/**/*",
     "package.json",
