@@ -1,0 +1,23 @@
+{
+  "name": "@exetree/exe-logger",
+  "version": "1.0.1",
+  "description": "Logger framework for JavaScript projects",
+  "keywords": [],
+  "scripts": {
+    "prebuild": "rm -rf ./lib",
+    "build": "tsc --project tsconfig.json",
+    "clear": "rm -rf ./lib"
+  },
+  "author": "Marius Petrauskas <marius@exetree.eu>",
+  "types": "lib/index.d.ts",
+  "license": "",
+  "files": [
+    "lib/**/*",
+    "package.json",
+    "README.md"
+  ],
+  "devDependencies": {
+    "@types/node": "^10.17.13",
+    "typescript": "^3.6.4"
+  }
+}
