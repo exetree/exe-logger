@@ -29,10 +29,30 @@ export class ExeLoggerTagged {
             levels = Object.values(ExeLoggerLevel) as ExeLoggerLevel[];
         }
         for (const level of levels) {
-            if (!this.targets[level]) {
-                this.targets[level] = [];
+            if (!ExeLoggerTagged.targets[level]) {
+                ExeLoggerTagged.targets[level] = [];
             }
-            this.targets[level].push(target);
+            ExeLoggerTagged.targets[level].push(target);
+        }
+    }
+
+    /**
+     * This method can be used to add the target to which the output data (messages) will be sent. Raw prefix (not colored)
+     *
+     * @param target
+     * @param levels
+     */
+    public static addTargetRaw(
+        target: (message: string, ...parameters: any[]) => void, ...levels: ExeLoggerLevel[]
+    ): void {
+        if (!levels || !levels.length) {
+            levels = Object.values(ExeLoggerLevel) as ExeLoggerLevel[];
+        }
+        for (const level of levels) {
+            if (!ExeLoggerTagged.targetsRaw[level]) {
+                ExeLoggerTagged.targetsRaw[level] = [];
+            }
+            ExeLoggerTagged.targetsRaw[level].push(target);
         }
     }
 
@@ -44,16 +64,33 @@ export class ExeLoggerTagged {
      */
     public static setLevel(level: ExeLoggerLevel, tag?: string): void {
         if (tag && tag.trim().length) {
-            this.levels[tag] = level;
+            ExeLoggerTagged.levels[tag] = level;
         } else {
-            this.mainLevel = level;
+            ExeLoggerTagged.mainLevel = level;
+        }
+    }
+
+    public static setLevels(levels: { main: ExeLoggerLevel, levels: { [key: string]: ExeLoggerLevel } }) {
+        this.mainLevel = levels.main;
+        this.levels = levels.levels;
+    }
+
+    public static getLevels(): { main: ExeLoggerLevel, levels: { [key: string]: ExeLoggerLevel } } {
+        return {
+            main: this.mainLevel,
+            levels: this.levels,
         }
     }
 
     /**
      * List of targets where the output messages will be send.
      */
-    private static targets: { [key: string]: Array<(message: string, ...parameters: any[]) => void> } = {};
+    private static targets: { [key: string]: ((message: string, ...parameters: any[]) => void)[] } = {};
+
+    /**
+     * List of targets where the output messages will be send. Raw prefix (not colored).
+     */
+    private static targetsRaw: { [key: string]: ((message: string, ...parameters: any[]) => void)[] } = {};
     /**
      * Tags mapping to the level to detect what level messages should be send for the defined tags.
      */
@@ -64,21 +101,34 @@ export class ExeLoggerTagged {
     private static mainLevel: ExeLoggerLevel = ExeLoggerLevel.INFO;
 
     /**
-     * Send the messages to the targets
+     * Send the messages to the targets.
      *
      * @param level
      * @param prefix
      * @param parameters
      * @private
      */
-    private static sendToTargets(level: ExeLoggerLevel, prefix: string, ...parameters: any[]): boolean {
+    private static sendToTargets(level: ExeLoggerLevel, prefix: string, ...parameters: any[]): void {
         if (ExeLoggerTagged.targets[level] && ExeLoggerTagged.targets[level].length) {
             for (const target of ExeLoggerTagged.targets[level]) {
                 target(prefix, ...parameters);
             }
-            return true;
-        } else {
-            return false;
+        }
+    }
+
+    /**
+     * Send the messages to the targets. Raw prefix (not colored).
+     *
+     * @param level
+     * @param prefix
+     * @param parameters
+     * @private
+     */
+    private static sendToTargetsRaw(level: ExeLoggerLevel, prefix: string, ...parameters: any[]): void {
+        if (ExeLoggerTagged.targetsRaw[level] && ExeLoggerTagged.targetsRaw[level].length) {
+            for (const target of ExeLoggerTagged.targetsRaw[level]) {
+                target(prefix, ...parameters);
+            }
         }
     }
 
@@ -99,10 +149,6 @@ export class ExeLoggerTagged {
         }
     }
 
-    public getNamed(name: string): ExeLoggerTagged {
-        return new ExeLoggerTagged(this.tag, name);
-    }
-
     /**
      * Log the severe message
      *
@@ -116,10 +162,14 @@ export class ExeLoggerTagged {
             (ExeLoggerTagged.levels[this.tag] && ExeLoggerTagged.levels[this.tag] >= ExeLoggerLevel.SEVERE)
             || (!ExeLoggerTagged.levels[this.tag] && ExeLoggerTagged.mainLevel >= ExeLoggerLevel.SEVERE)
         ) {
-            const prefix = this.formatPrefix('SEVERE');
-            if (!ExeLoggerTagged.sendToTargets(ExeLoggerLevel.SEVERE, prefix, ...messages) && ExeLoggerTagged.useConsole) {
-                console.error(ExeLoggerSpec.FG_RED + prefix + ExeLoggerSpec.RESET, ...this.format(...messages));
+            const prefixRaw = this.formatPrefix('SEVERE');
+            const prefix = ExeLoggerSpec.FG_RED + prefixRaw + ExeLoggerSpec.RESET;
+            messages = this.format(...messages);
+            if (ExeLoggerTagged.useConsole) {
+                console.error(prefix, ...messages);
             }
+            ExeLoggerTagged.sendToTargets(ExeLoggerLevel.SEVERE, prefix, ...messages);
+            ExeLoggerTagged.sendToTargetsRaw(ExeLoggerLevel.SEVERE, prefixRaw, ...messages);
         }
     }
 
@@ -136,10 +186,14 @@ export class ExeLoggerTagged {
             (ExeLoggerTagged.levels[this.tag] && ExeLoggerTagged.levels[this.tag] >= ExeLoggerLevel.WARNING)
             || (!ExeLoggerTagged.levels[this.tag] && ExeLoggerTagged.mainLevel >= ExeLoggerLevel.WARNING)
         ) {
-            const prefix = this.formatPrefix('WARN  ');
-            if (!ExeLoggerTagged.sendToTargets(ExeLoggerLevel.WARNING, prefix, ...messages) && ExeLoggerTagged.useConsole) {
-                console.warn(ExeLoggerSpec.FG_YELLOW + prefix + ExeLoggerSpec.RESET, ...this.format(...messages));
+            const prefixRaw = this.formatPrefix('WARN  ');
+            const prefix = ExeLoggerSpec.FG_YELLOW + prefixRaw + ExeLoggerSpec.RESET;
+            messages = this.format(...messages);
+            if (ExeLoggerTagged.useConsole) {
+                console.warn(prefix, ...messages);
             }
+            ExeLoggerTagged.sendToTargets(ExeLoggerLevel.WARNING, prefix, ...messages);
+            ExeLoggerTagged.sendToTargetsRaw(ExeLoggerLevel.WARNING, prefixRaw, ...messages);
         }
     }
 
@@ -156,10 +210,14 @@ export class ExeLoggerTagged {
             (ExeLoggerTagged.levels[this.tag] && ExeLoggerTagged.levels[this.tag] >= ExeLoggerLevel.INFO)
             || (!ExeLoggerTagged.levels[this.tag] && ExeLoggerTagged.mainLevel >= ExeLoggerLevel.INFO)
         ) {
-            const prefix = this.formatPrefix('INFO  ');
-            if (!ExeLoggerTagged.sendToTargets(ExeLoggerLevel.INFO, prefix, ...messages) && ExeLoggerTagged.useConsole) {
-                console.log(ExeLoggerSpec.FG_BLUE + prefix + ExeLoggerSpec.RESET, ...this.format(...messages));
+            const prefixRaw = this.formatPrefix('INFO  ');
+            const prefix = ExeLoggerSpec.FG_BLUE + prefixRaw + ExeLoggerSpec.RESET;
+            messages = this.format(...messages);
+            if (ExeLoggerTagged.useConsole) {
+                console.log(prefix, ...messages);
             }
+            ExeLoggerTagged.sendToTargets(ExeLoggerLevel.INFO, prefix, ...messages);
+            ExeLoggerTagged.sendToTargetsRaw(ExeLoggerLevel.INFO, prefixRaw, ...messages);
         }
     }
 
@@ -176,10 +234,14 @@ export class ExeLoggerTagged {
             (ExeLoggerTagged.levels[this.tag] && ExeLoggerTagged.levels[this.tag] >= ExeLoggerLevel.DEBUG)
             || (!ExeLoggerTagged.levels[this.tag] && ExeLoggerTagged.mainLevel >= ExeLoggerLevel.DEBUG)
         ) {
-            const prefix = this.formatPrefix('DEBUG ');
-            if (!ExeLoggerTagged.sendToTargets(ExeLoggerLevel.DEBUG, prefix, ...messages) && ExeLoggerTagged.useConsole) {
-                console.log(ExeLoggerSpec.FG_CYAN + prefix + ExeLoggerSpec.RESET, ...this.format(...messages));
+            const prefixRaw = this.formatPrefix('DEBUG ');
+            const prefix = ExeLoggerSpec.FG_CYAN + prefixRaw + ExeLoggerSpec.RESET;
+            messages = this.format(...messages);
+            if (ExeLoggerTagged.useConsole) {
+                console.log(prefix, ...messages);
             }
+            ExeLoggerTagged.sendToTargets(ExeLoggerLevel.DEBUG, prefix, ...messages);
+            ExeLoggerTagged.sendToTargetsRaw(ExeLoggerLevel.DEBUG, prefixRaw, ...messages);
         }
     }
 
@@ -196,10 +258,14 @@ export class ExeLoggerTagged {
             (ExeLoggerTagged.levels[this.tag] && ExeLoggerTagged.levels[this.tag] >= ExeLoggerLevel.DROWN)
             || (!ExeLoggerTagged.levels[this.tag] && ExeLoggerTagged.mainLevel >= ExeLoggerLevel.DROWN)
         ) {
-            const prefix = this.formatPrefix('DROWN ');
-            if (!ExeLoggerTagged.sendToTargets(ExeLoggerLevel.DROWN, prefix, ...messages) && ExeLoggerTagged.useConsole) {
-                console.log(ExeLoggerSpec.FG_BLACK + prefix + ExeLoggerSpec.RESET, ...this.format(...messages));
+            const prefixRaw = this.formatPrefix('DROWN ');
+            const prefix = ExeLoggerSpec.FG_BLACK + prefixRaw + ExeLoggerSpec.RESET;
+            messages = this.format(...messages);
+            if (ExeLoggerTagged.useConsole) {
+                console.log(prefix, ...messages);
             }
+            ExeLoggerTagged.sendToTargets(ExeLoggerLevel.DROWN, prefix, ...messages)
+            ExeLoggerTagged.sendToTargetsRaw(ExeLoggerLevel.DROWN, prefixRaw, ...messages)
         }
     }
 

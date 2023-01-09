@@ -4,17 +4,19 @@ import * as readline from 'readline';
 import * as path from 'path';
 import {ExeLoggerTagged} from './exe-logger-tagged';
 import * as fs from 'fs';
+import {ExeLoggerNamed} from './exe-logger-named';
 
 /**
  * This class extends the main logging class to add functionality available on back-end.
  */
 export class ExeLogger extends ExeLoggerTagged {
 
-    public static loadConfig(): void {
+    public static loadConfig(file?: string): void {
         const LOG: ExeLoggerTagged = new ExeLoggerTagged('EXE LOGGER CONFIGURATION')
-        if (fs.existsSync('logging.json')) {
+        file = file ? file : 'logging.json';
+        if (fs.existsSync(file)) {
             LOG.info(`Loading logging configuration...`);
-            const data: Buffer = fs.readFileSync('logging.json');
+            const data: Buffer = fs.readFileSync(file);
             const conf: { [key: string]: string } = JSON.parse(data.toString('utf-8'));
             for (const tag of Object.keys(conf)) {
                 // @ts-ignore
@@ -39,6 +41,10 @@ export class ExeLogger extends ExeLoggerTagged {
         level?: ExeLoggerLevel
     ) {
         super(path.basename(filePath, '.js'), undefined, level);
+    }
+
+    public getNamed(name: string): ExeLoggerNamed {
+        return new ExeLoggerNamed(this.tag, name);
     }
 
     /**
@@ -68,7 +74,7 @@ export class ExeLogger extends ExeLoggerTagged {
             if (Buffer.isBuffer(message)) {
                 let position: number = 0;
                 let nextPosition: number = 0;
-                let exploded: Buffer[] = [];
+                const exploded: Buffer[] = [];
                 while (position < message.length) {
                     nextPosition = position + 30 < message.length ? position + 30 : message.length;
                     exploded.push(message.slice(position, nextPosition))
